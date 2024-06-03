@@ -1,5 +1,7 @@
 import sys
 import subprocess
+import time
+
 import mediapipe as mp
 import cv2
 from PyQt5.QtWidgets import QApplication, QWidget, QComboBox, QPushButton
@@ -11,27 +13,26 @@ application_list = [
     'Notes',
     'Calendar',
     'Google Chrome',
-    'Obsidian',
-    'Todoist',
     'KakaoTalk',
     'Safari',
     'Postman',
     'Mail',
+    'Todoist',
+    'Obsidian',
+    'DeepL',
+    'DataGrip',
+    'IntelliJ IDEA CE',
+    'Reddit',
+    'Github',
+    'App Store',
+    'Discord',
+    'Sublime Text'
 ]
 
-
 def launch_application(app_name):
-    script = f"""
-    tell application "{app_name}"
-        if not (exists window 1) then reopen
-        activate
-    end tell
-    """
+    script = f'do shell script "open -a \\"{app_name}\\""'
     subprocess.Popen(["osascript", "-e", script])
-
-
 def startCamera(selected_indices):
-    print(selected_indices)
     # Mediapipe 손 모델 초기화
     mpHands = mp.solutions.hands
     hands = mpHands.Hands(
@@ -76,13 +77,13 @@ def startCamera(selected_indices):
         elif fingers == [0, 0, 1, 0, 0]:
             launch_application(application_list[selected_indices[3]])
             return "fuck you"
-        elif fingers == [0, 0, 0, 0, 1]:
+        elif fingers == [0, 1, 1, 0, 0]:
             launch_application(application_list[selected_indices[4]])
             return "v"
         elif fingers == [1, 1, 0, 0, 0]:
             launch_application(application_list[selected_indices[5]])
             return "nike"
-        elif fingers == [1, 1, 1, 0, 0]:
+        elif fingers == [0, 1, 1, 1, 0]:
             launch_application(application_list[selected_indices[6]])
             return "three"
         elif fingers == [0, 1, 1, 1, 1]:
@@ -98,6 +99,7 @@ def startCamera(selected_indices):
     # 최근 N 프레임의 제스처를 저장할 버퍼
     N = 10
     gesture_buffer = []
+    last_recognition_time = time.time()
 
     while True:
         # 프레임 읽기
@@ -132,9 +134,10 @@ def startCamera(selected_indices):
                 Draw.draw_landmarks(frame, handLms, mpHands.HAND_CONNECTIONS)
 
             # 제스처 분류
-            if landmarkList:
+            if landmarkList and time.time() - last_recognition_time > 5:
                 gesture = classify_gesture(landmarkList)
                 gesture_buffer.append(gesture)
+                last_recognition_time = time.time()  # Update the last recognition time
 
                 # 최근 N 프레임의 제스처가 모두 동일하면 출력
                 if len(gesture_buffer) > N:
@@ -152,7 +155,6 @@ def startCamera(selected_indices):
     # 자원 해제
     cap.release()
     cv2.destroyAllWindows()
-
 
 class MyWindow(QWidget):
     def __init__(self):
@@ -193,6 +195,7 @@ class MyWindow(QWidget):
         self.confirm_button.setFixedHeight(40)
         self.confirm_button.move(int(self.width() / 2) - 140, 430)  # 결정하기 버튼 위치 설정
         self.confirm_button.clicked.connect(self.on_confirm_click)  # 결정하기 버튼 클릭 시 함수 실행
+        self.confirm_button.clicked.connect(self.close)  # 종료하기 버튼 클릭 시 윈도우 닫기
 
         self.quit_button = QPushButton('종료하기', self)
         self.quit_button.setFixedWidth(100)
@@ -229,7 +232,6 @@ class MyWindow(QWidget):
             if i < len(image_files):
                 pixmap = QPixmap(image_files[i])
                 painter.drawPixmap(pos[0], pos[1], 60, 60, pixmap)  # 이미지 그리기
-
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
